@@ -17,6 +17,7 @@ public:
 
 public:
 	HANDLE hShared;
+	string mappedFileId;
 };
 
 class Envelope
@@ -48,10 +49,10 @@ void ReadWavetable(IPC::MessageReader &r)
 {
 	for (int wi = 0; wi < WAVE_MAX; wi++)
 	{
-		Wave &w = wavetable[wi];
+		Wave& w = wavetable[wi];
 
 		r.Read(w.Allocated);
-		
+
 		if (w.Allocated != NULL)
 		{
 			w.Name = r.ReadString();
@@ -64,18 +65,19 @@ void ReadWavetable(IPC::MessageReader &r)
 
 			for (int i = 0; i < levelcount; i++)
 			{
-				Level &l = w.Levels[i];
-				short *poldsamples = l.pSamples;
+				Level& l = w.Levels[i];
+				short* poldsamples = l.pSamples;
 
-				HANDLE hShared;
-				r.Read(hShared);
+				string idNew = r.ReadString();
 				r.Read(&w.Levels[i], sizeof(CWaveLevel));
 
-				if (hShared != l.hShared)
+				if (idNew != l.mappedFileId)
 				{
 					if (l.hShared != NULL) ::UnmapViewOfFile(poldsamples);
+					HANDLE hShared = ::OpenFileMapping(FILE_MAP_READ | FILE_MAP_WRITE, FALSE, idNew.c_str());
 					l.hShared = hShared;
-					if (hShared != NULL) l.pSamples = (short *)::MapViewOfFile(hShared, FILE_MAP_WRITE | FILE_MAP_READ, 0, 0, 0);
+					if (hShared != NULL) l.pSamples = (short*)::MapViewOfFile(hShared, FILE_MAP_WRITE | FILE_MAP_READ, 0, 0, 0);
+					l.mappedFileId = idNew;
 				}
 				else
 				{
@@ -89,7 +91,7 @@ void ReadWavetable(IPC::MessageReader &r)
 
 			for (int i = 0; i < envcount; i++)
 			{
-				Envelope &e = w.Envelopes[i];
+				Envelope& e = w.Envelopes[i];
 				int pointcount = (int)r.ReadDWORD();
 				if (pointcount != e.Points.size()) e.Points.resize(pointcount);
 				if (pointcount > 0) r.Read(&e.Points[0], pointcount * sizeof(int));
@@ -100,9 +102,7 @@ void ReadWavetable(IPC::MessageReader &r)
 		{
 			w.Levels.resize(0);
 		}
-
 	}
-
 }
 
 char const *wavetableGetWaveName(int i)
