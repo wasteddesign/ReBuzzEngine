@@ -45,6 +45,13 @@ public:
 
 Wave wavetable[WAVE_MAX];
 
+#ifdef _WIN64
+#define SIZE_OF_CWAVELEVEL 28
+#else
+#define SIZE_OF_CWAVELEVEL 24
+#endif
+
+
 void ReadWavetable(IPC::MessageReader &r)
 {
 	for (int wi = 0; wi < WAVE_MAX; wi++)
@@ -69,7 +76,7 @@ void ReadWavetable(IPC::MessageReader &r)
 				short* poldsamples = l.pSamples;
 
 				string idNew = r.ReadString();
-				r.Read(&w.Levels[i], sizeof(CWaveLevel));
+				r.Read(&w.Levels[i], SIZE_OF_CWAVELEVEL);
 
 				if (idNew != l.mappedFileId)
 				{
